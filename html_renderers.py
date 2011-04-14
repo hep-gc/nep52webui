@@ -147,7 +147,7 @@ class JobRenderer():
         return html
 
 class RunningVmRenderer():
-    def running_vms_to_html_table(self, vm_list_output, resource):
+    def running_vms_to_html_table(self, cloud_scheduler, vm_list_output, resource):
         cloud = resource['network_address']
         matches = re.findall('Workspace \#(\d+)\. (\d+\.\d+\.\d+\.\d+) \[ (\S+) \]\s+State: (\S+)', vm_list_output)
         html = ''
@@ -184,7 +184,7 @@ class RunningVmRenderer():
                 for vm in interactive_vms:
                     html += '<tr>'
                     html += '<td>%s</td><td>%s</td><td>%s</td><td>%s</td>' % (vm[0], vm[1], vm[2], vm[3])
-                    html += '<td><a href="/webui/shutdown_vm?cloud=%s&image_id=%s">shutdown</a></td>' % (cloud, vm[0])
+                    html += '<td><a href="/webui/shutdown_vm_confirmation?cloud_scheduler=%s&cloud=%s&image_id=%s">shutdown</a></td>' % (cloud_scheduler, cloud, vm[0])
                     html += '</tr>'
                 html += '</tbody></table>'
 
@@ -194,7 +194,7 @@ class RunningVmRenderer():
                 for vm in non_interactive_vms:
                     html += '<tr>'
                     html += '<td>%s</td><td>%s</td><td>%s</td><td>%s</td>' % (vm[0], vm[1], vm[2], vm[3])
-                    html += '<td><a href="/webui/shutdown_vm?cloud=%s&image_id=%s">shutdown</a></td>' % (cloud, vm[0])
+                    html += '<td><a href="/webui/shutdown_vm_confirmation?cloud_scheduler=%s&cloud=%s&image_id=%s">shutdown</a></td>' % (cloud_scheduler, cloud, vm[0])
                     html += '</tr>'
                 html += '</tbody></table>'
         return html

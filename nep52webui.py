@@ -304,6 +304,10 @@ class Root():
             return html_utils.exception_page(e)
 
     @cherrypy.expose
+    def shutdown_vm_confirmation(self, cloud_scheduler, cloud, image_id):
+        return html_utils.yes_no_page('Are you sure you want to shutdown image %s on %s?' % (image_id, cloud), '/webui/shutdown_vm?cloud=%s&image_id=%s' % (urllib.quote_plus(cloud), urllib.quote_plus(image_id)), '/webui/list_running_interactive_images?cloud_scheduler=%s' % cloud_scheduler)
+
+    @cherrypy.expose
     def shutdown_vm(self, cloud, image_id):
         try:
             # Make vm_run call to boot the image.
@@ -325,7 +329,7 @@ class Root():
                 cmd = ['/usr/local/nimbus-cloud-client-018-plus-extras/bin/vm-list', resource['network_address']]
                 env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
                 output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)
-                html_for_resources += RunningVmRenderer().running_vms_to_html_table(output, resource)
+                html_for_resources += RunningVmRenderer().running_vms_to_html_table(cloud_scheduler, output, resource)
 
             return html_utils.wrap(html_for_resources)
         except Exception, e:
