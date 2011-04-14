@@ -8,6 +8,9 @@ import urllib
 import subprocess
 import re
 import json
+import os
+import ConfigParser
+
 from repoman_client.client import RepomanClient
 from repoman_client.client import RepomanError
 
@@ -22,10 +25,14 @@ from forms import VmImageCreationForm
 
 import html_utils
 import condor_utils
+import config
 
 import pycurl 
 
-cherrypy.config.update({'environment': 'embedded', 'log.error_file':'/tmp/nep52webui.error.log', 'log.access_file':'/tmp/nep52webui.access.log'})
+# The globally accessible AppConfig instance.
+app_config = config.AppConfig()
+
+cherrypy.config.update({'environment': 'embedded', 'log.error_file':app_config.get_error_logfile(), 'log.access_file':app_config.get_access_logfile()})
 
 if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
     cherrypy.engine.start(blocking=False)
@@ -35,7 +42,7 @@ if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
 class Root():
 
     def get_repoman_client(self, server_string=None):
-        server = 'vmrepo.cloud.nrc.ca'
+        server = app_config.get_repoman_server()
         port = 443
         fields = []
         if server_string != None:
@@ -45,9 +52,6 @@ class Root():
         elif len(fields) == 1:
             server = fields[0]
         user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
-        cmd = ['grid-proxy-info', '-f', user_proxy]
-        proxy_info = subprocess.check_output(cmd)
-        cherrypy.log(proxy_info)
         return RepomanClient(host=server, port=port, proxy=user_proxy)
 
 
@@ -56,7 +60,9 @@ class Root():
 
 
     @cherrypy.expose
-    def get_clouds_info(self, cloud_scheduler='condor.heprc.uvic.ca'):
+    def get_clouds_info(self, cloud_scheduler=None):
+        if cloud_scheduler == None:
+            cloud_scheduler = app_config.get_default_cloud_scheduler()
         cmd = ['cloud_status', '-s', cloud_scheduler, '-a', '-j']
         clouds_info = json.loads(subprocess.check_output(cmd))
         
