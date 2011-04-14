@@ -1,0 +1,13 @@
+This directory contains the code for the NEP-52 web portal.
+
+The idea is to have most of the web portal 'shell' implemented by
+Drupal, and have the dynamic content related to the NEP-52 project
+served by a simple web application, currently written using cherrypy.
+
+IMPORTANT:
+This is currently still in a 'prototype' state, and will likely be
+refactored on an ongoing basis.
+
+
+--
+Andre
