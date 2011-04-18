@@ -114,7 +114,7 @@ class Root():
     def list_all_images(self):
         try:
             images = self.get_repoman_client().list_all_images()
-        except RepomanError, e:
+        except Exception, e:
             return html_utils.exception_page(e)
         if(len(images) == 0):
             return html_utils.wrap("No images on server.")
@@ -127,8 +127,6 @@ class Root():
     def describe_image(self, owner, name):
         try:
             image = self.get_repoman_client().describe_image(owner + '/' + name)
-        except RepomanError, e:
-            return html_utils.exception_page(e)
         except Exception, e:
             return html_utils.exception_page(e)
         return html_utils.wrap((VmImageRenderer().image_to_html_table(image)))
@@ -140,8 +138,11 @@ class Root():
 
     @cherrypy.expose
     def show_image_creation_form(self):
-        images = self.get_repoman_client().list_current_user_images()
-        return html_utils.wrap(VmImageCreationForm(images).get_form_html())
+        try:
+            images = self.get_repoman_client().list_current_user_images()
+            return html_utils.wrap(VmImageCreationForm(images).get_form_html())
+        except Exception, e:
+            return html_utils.exception_page(e)
 
     @cherrypy.expose
     def create_image(self, image_name=None, image_description=None, image_file=None, image_source=None, source_image=None, unauthenticated_access=False):
@@ -155,7 +156,9 @@ class Root():
             try:
                 previous_image = self.get_repoman_client().describe_image('%s/%s' % (self.get_repoman_username(), image_name))
                 return html_utils.message('An image with name <i>%s</i> already exist.<br>Please select another name.' % (image_name))
-            except:
+            except InvalidUserProxy, e:
+                return html_utils.exception_page(e)
+            except Exception, e:
                 pass
 
             if image_name == None or len(image_name) == 0:
@@ -201,7 +204,7 @@ class Root():
     def delete_image(self, owner, name):
         try:
             image = self.get_repoman_client().remove_image(owner + '/' + name)
-        except RepomanError, e:
+        except Exception, e:
             return html_utils.exception_page(e)
         return self.list_current_user_images()
 
@@ -214,7 +217,7 @@ class Root():
             groups = self.get_repoman_client().list_groups(list_all=True)
             form_html = VmImageEditForm().get_form_html(image, users, groups)
             return html_utils.wrap(form_html)
-        except RepomanError, e:
+        except Exception, e:
             return html_utils.exception_page(e)
 
     @cherrypy.expose
@@ -297,7 +300,7 @@ class Root():
                 c.close()
                 
             return html_utils.wrap('Image updated.')
-        except RepomanError, e:
+        except Exception, e:
             return html_utils.exception_page(e)
 
 
@@ -306,7 +309,7 @@ class Root():
         try:
             image = self.get_repoman_client().describe_image(owner + '/' + name)
             image_url = image['http_file_url']
-        except RepomanError, e:
+        except Exception, e:
             return html_utils.exception_page(e)
         return html_utils.wrap(VmBootForm(image).get_html())
 
