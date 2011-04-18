@@ -1,8 +1,13 @@
 # Utility method to wrap some html content into a proper
 # html page.
-def wrap(body_content):
+def wrap(body_content, refresh_url=None, refresh_time=None):
     html = ''
     html += '<html><head>'
+    if refresh_time != None:
+        html += '\n<meta HTTP-EQUIV="Refresh" CONTENT="%d' % (refresh_time)
+        if refresh_url != None:
+            html += '; URL=%s' % (refresh_url)
+        html += '">\n'
     html += '<script src="/js/sorttable.js"></script>'
     html += """
     <link type="text/css" rel="stylesheet" media="all" href="/modules/node/node.css?r" />
@@ -21,6 +26,14 @@ def wrap(body_content):
 
 def message(msg):
     return wrap('<p>%s</p>' % (msg))
+
+def file_watch_page(file_path, refresh_url=None, refresh_time=None):
+    try:
+        content = open(file_path).read()
+        return wrap('<pre>%s</pre>' % content, refresh_time=5)
+    except Exception, e:
+        return exception_page(e)
+
 
 def exception_page(exception):
     return wrap("%s" % exception)

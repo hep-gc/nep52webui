@@ -26,3 +26,13 @@ class AppConfig():
     def get_default_cloud_scheduler(self):
         return self.config.get('cloud_scheduler', 'default_cloud_scheduler')
 
+    def get_vm_run_command(self):
+        # TODO: make the following configurable via the config file
+        return '/usr/local/nimbus-cloud-client-018-plus-extras/bin/vm-run'
+
+    def get_grid_proxy_info_command(self):
+        # TODO: make the following configurable via the config file
+        return '/usr/local/gt5.0.3/bin/grid-proxy-info'
+
+# The globally accessible AppConfig instance.
+app_config = AppConfig()

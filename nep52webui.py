@@ -22,15 +22,15 @@ from html_renderers import CloudInfoRenderer
 from forms import VmImageEditForm
 from forms import VmBootForm
 from forms import VmImageCreationForm
+from image_booter import ImageBooter
+from image_booter import image_boot_output_map
 
 import html_utils
 import condor_utils
-import config
+from config import app_config
 
 import pycurl 
 
-# The globally accessible AppConfig instance.
-app_config = config.AppConfig()
 
 cherrypy.config.update({'environment': 'embedded', 'log.error_file':app_config.get_error_logfile(), 'log.access_file':app_config.get_access_logfile()})
 
@@ -38,10 +38,20 @@ if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
     cherrypy.engine.start(blocking=False)
     atexit.register(cherrypy.engine.stop)
 
+class InvalidUserProxy(Exception):
+    pass
 
 class Root():
 
     def get_repoman_client(self, server_string=None):
+        user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
+        # Check to make sure proxy is RFC 3820 compliant.
+        cmd = [app_config.get_grid_proxy_info_command(), '-f', user_proxy]
+        cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        if cmd_output.find('RFC 3820 compliant') == -1:
+            # Non RFC 3820 compilant proxy detected... throw an exception
+            raise InvalidUserProxy('You are using a non RFC 3820 proxy.  The repoman server currently only accepts RFC 3820 compliant impersonation proxies.<p>To correct this problem, first replace your user proxy in the MyProxy server with a RFC 3820 compliant proxy and then click <a href="/webui/delete_cached_user_proxy">here</a> to clear the cached user proxy.</p>')
+
         server = app_config.get_repoman_server()
         port = 443
         fields = []
@@ -51,11 +61,17 @@ class Root():
             port = int(fields[1])
         elif len(fields) == 1:
             server = fields[0]
-        user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
         return RepomanClient(host=server, port=port, proxy=user_proxy)
 
+    @cherrypy.expose
+    def delete_cached_user_proxy(self):
+        user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
+        user_info_file = user_proxy.replace('-delegation','-user')
+        os.remove(user_proxy)
+        os.remove(user_info_file)
+        return html_utils.message('Cached user proxy deleted.')
 
-    def get_username(self):
+    def get_repoman_username(self):
         return self.get_repoman_client().whoami()['user_name']
 
 
@@ -84,7 +100,7 @@ class Root():
         user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
         try:
             images = self.get_repoman_client().list_current_user_images()
-        except RepomanError, e:
+        except Exception, e:
             return html_utils.exception_page(e)
         if(len(images) == 0):
             return html_utils.wrap("You do not own any images on this server.")
@@ -137,7 +153,7 @@ class Root():
         try:
             # Check if image already exist.
             try:
-                previous_image = self.get_repoman_client().describe_image('%s/%s' % (self.get_username(), image_name))
+                previous_image = self.get_repoman_client().describe_image('%s/%s' % (self.get_repoman_username(), image_name))
                 return html_utils.message('An image with name <i>%s</i> already exist.<br>Please select another name.' % (image_name))
             except:
                 pass
@@ -156,7 +172,7 @@ class Root():
             self.get_repoman_client().create_image_metadata(**args)
 
             if image_source == 'from_uploaded_file' and image_file != None and image_file.file != None:
-                url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_username(), image_name)
+                url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_repoman_username(), image_name)
 
                 # Compute total file size.
                 size = 0
@@ -259,7 +275,7 @@ class Root():
                     self.get_repoman_client().share_with_group(orig_owner + '/' + name, group.split('/')[-1])
 
             if image_file != None and image_file.file != None:
-                url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_username(), name)
+                url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_repoman_username(), name)
 
                 # Compute total file size.
                 size = 0
@@ -297,17 +313,23 @@ class Root():
     @cherrypy.expose
     def boot_vm(self, image_name=None, image_location=None, arch=None, cloud=None, ram=None, network=None, cpus=None):
         try:
-            # Make vm_run call to boot the image.
-            cmd = ['/usr/local/nimbus-cloud-client-018-plus-extras/bin/vm-run', '-i', image_location, '-u', cherrypy.request.wsgi_environ['X509_USER_PROXY'], '-n', network, '-r', ram, '-c', cloud, '-p', cpus, '-a', arch]
-            cherrypy.log(" ".join(cmd))
-            env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
-            p = subprocess.Popen(cmd, shell=False, env=env)
-            # Save booting output to temporary file.
-            # TODO
-
-            return html_utils.wrap('Image boot process started.')
+            t = ImageBooter(image_name, image_location, arch, cloud, ram, network, cpus, cherrypy.request.wsgi_environ['X509_USER_PROXY'])
+            boot_process_id = t.get_boot_process_id()
+            
+            t.start()
+            cherrypy.log('Image booter thread started.')
+            #return html_utils.message('Boot process started.')
+            return html_utils.message('<a href="/webui/show_vm_boot_process?output_id=%s">Watch boot progress</a>' % (boot_process_id))
         except Exception, e:
             return html_utils.exception_page(e)
+
+    @cherrypy.expose
+    def show_vm_boot_process(self, output_id):
+        output_file = image_boot_output_map.get_output_file_path(output_id)
+        if output_file != None:
+            return html_utils.file_watch_page(output_file)
+        else:
+            return html_utils.message('Could not get output of image boot process.')
 
     @cherrypy.expose
     def shutdown_vm_confirmation(self, cloud_scheduler, cloud, image_id):
@@ -411,4 +433,4 @@ class FileReader:
 
 
 application = cherrypy.Application(Root(), script_name=None, config=None)
-
+cherrypy.log('nep52webui app started')
