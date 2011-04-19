@@ -69,7 +69,7 @@ class VmImageRenderer():
         html += '</table>'
         return html
 
-    def images_to_html_table(self, images, show_actions=False):
+    def images_to_html_table(self, images, repoman_server, show_actions=False):
         html = ''
         html += '<table class="sortable">'
         html += '<thead><tr><th>Owner:</th><th>Image:</th></tr></thead>'
@@ -79,11 +79,11 @@ class VmImageRenderer():
             name = image.rsplit('/', 2)[2]
             html += '<tr>'
             html += '<td>%s</td>' % (urllib.quote_plus(owner))
-            html += '<td><a href="/webui/describe_image?owner=%s&name=%s">%s</a></td>' % (urllib.quote_plus(owner), urllib.quote_plus(name), urllib.quote_plus(name)) 
+            html += '<td><a href="/webui/describe_image?repoman_server=%s&owner=%s&name=%s">%s</a></td>' % (urllib.quote_plus(repoman_server), urllib.quote_plus(owner), urllib.quote_plus(name), urllib.quote_plus(name)) 
             if show_actions:
-                html += '<td><a href="/webui/show_image_boot_form?owner=%s&name=%s">boot interactive</a></td>' % (urllib.quote_plus(owner), urllib.quote_plus(name))
-                html += '<td><a href="/webui/show_edit_image_form?owner=%s&name=%s">edit</a></td>' % (urllib.quote_plus(owner), urllib.quote_plus(name))
-                html += '<td><a href="/webui/delete_image_confirmation?owner=%s&name=%s">delete</a></td>' % (urllib.quote_plus(owner), urllib.quote_plus(name))
+                html += '<td><a href="/webui/show_image_boot_form?repoman_server=%s&owner=%s&name=%s">boot interactive</a></td>' % (urllib.quote_plus(repoman_server), urllib.quote_plus(owner), urllib.quote_plus(name))
+                html += '<td><a href="/webui/show_edit_image_form?repoman_server=%s&owner=%s&name=%s">edit</a></td>' % (urllib.quote_plus(repoman_server), urllib.quote_plus(owner), urllib.quote_plus(name))
+                html += '<td><a href="/webui/delete_image_confirmation?repoman_server=%s&owner=%s&name=%s">delete</a></td>' % (urllib.quote_plus(repoman_server), urllib.quote_plus(owner), urllib.quote_plus(name))
             html += '</tr>'
         html += '</tbody>'
         html += '</table>'

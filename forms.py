@@ -47,11 +47,12 @@ class VmImageEditForm():
         else:
             return value
 
-    def get_form_html(self, image, users, groups):
+    def get_form_html(self, repoman_server, image, users, groups):
         html = ''
         html += '<form action="/webui/edit_image" method="post" enctype="multipart/form-data">'
         html += '<input type="hidden" name="orig_name" value="%s">' % (image['name'])
         html += '<input type="hidden" name="orig_owner" value="%s">' % (image['owner_user_name'])
+        html += '<input type="hidden" name="repoman_server" value="%s">' % (repoman_server)
         html += '<table border="1">'
 
         html += '<tr>'

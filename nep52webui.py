@@ -71,8 +71,8 @@ class Root():
         os.remove(user_info_file)
         return html_utils.message('Cached user proxy deleted.')
 
-    def get_repoman_username(self):
-        return self.get_repoman_client().whoami()['user_name']
+    def get_repoman_username(self, repoman_server = None):
+        return self.get_repoman_client(repoman_server).whoami()['user_name']
 
 
     @cherrypy.expose
@@ -96,45 +96,45 @@ class Root():
         return html_utils.wrap(html)
         
     @cherrypy.expose
-    def list_current_user_images(self):
+    def list_current_user_images(self, repoman_server):
         user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
         try:
-            images = self.get_repoman_client().list_current_user_images()
+            images = self.get_repoman_client(repoman_server).list_current_user_images()
         except Exception, e:
             return html_utils.exception_page(e)
         if(len(images) == 0):
-            return html_utils.wrap("You do not own any images on this server.")
+            return html_utils.wrap("You do not own any images on %s." % (repoman_server))
         else:
-            return html_utils.wrap(VmImageRenderer().images_to_html_table(images, show_actions=True))
+            return html_utils.wrap(VmImageRenderer().images_to_html_table(images, repoman_server, show_actions=True))
 
 
 
 
     @cherrypy.expose
-    def list_all_images(self):
+    def list_all_images(self, repoman_server):
         try:
-            images = self.get_repoman_client().list_all_images()
+            images = self.get_repoman_client(repoman_server).list_all_images()
         except Exception, e:
             return html_utils.exception_page(e)
         if(len(images) == 0):
             return html_utils.wrap("No images on server.")
         else:
-            return html_utils.wrap(VmImageRenderer().images_to_html_table(images))
+            return html_utils.wrap(VmImageRenderer().images_to_html_table(images, repoman_server))
 
 
 
     @cherrypy.expose
-    def describe_image(self, owner, name):
+    def describe_image(self, repoman_server, owner, name):
         try:
-            image = self.get_repoman_client().describe_image(owner + '/' + name)
+            image = self.get_repoman_client(repoman_server).describe_image(owner + '/' + name)
         except Exception, e:
             return html_utils.exception_page(e)
         return html_utils.wrap((VmImageRenderer().image_to_html_table(image)))
 
 
     @cherrypy.expose
-    def delete_image_confirmation(self, owner, name):
-        return html_utils.yes_no_page('Are you sure you want to delete %s/%s?' % (owner, name), '/webui/delete_image?owner=%s&name=%s' % (urllib.quote_plus(owner), urllib.quote_plus(name)), '/webui/list_current_user_images')
+    def delete_image_confirmation(self, repoman_server, owner, name):
+        return html_utils.yes_no_page('Are you sure you want to delete %s/%s on %s?' % (owner, name, repoman_server), '/webui/delete_image?repoman_server=%s&owner=%s&name=%s' % (urllib.quote_plus(repoman_server), urllib.quote_plus(owner), urllib.quote_plus(name)), '/webui/list_current_user_images')
 
     @cherrypy.expose
     def show_image_creation_form(self):
@@ -201,31 +201,31 @@ class Root():
         return self.list_current_user_images()
 
     @cherrypy.expose
-    def delete_image(self, owner, name):
+    def delete_image(self, repoman_server, owner, name):
         try:
-            image = self.get_repoman_client().remove_image(owner + '/' + name)
+            image = self.get_repoman_client(repoman_server).remove_image(owner + '/' + name)
         except Exception, e:
             return html_utils.exception_page(e)
-        return self.list_current_user_images()
+        return self.list_current_user_images(repoman_server)
 
 
     @cherrypy.expose
-    def show_edit_image_form(self, owner, name):
+    def show_edit_image_form(self, repoman_server, owner, name):
         try:
-            image = self.get_repoman_client().describe_image(owner + '/' + name)
-            users = self.get_repoman_client().list_users()
-            groups = self.get_repoman_client().list_groups(list_all=True)
-            form_html = VmImageEditForm().get_form_html(image, users, groups)
+            image = self.get_repoman_client(repoman_server).describe_image(owner + '/' + name)
+            users = self.get_repoman_client(repoman_server).list_users()
+            groups = self.get_repoman_client(repoman_server).list_groups(list_all=True)
+            form_html = VmImageEditForm().get_form_html(repoman_server, image, users, groups)
             return html_utils.wrap(form_html)
         except Exception, e:
             return html_utils.exception_page(e)
 
     @cherrypy.expose
-    def edit_image(self, orig_name = None, orig_owner = None, name = None, description = None, hypervisor = None, os_arch = None, os_type = None, os_variant = None, read_only = None, shared_with_users = None, shared_with_groups = None, unauthenticated_access = None, image_file = None):
+    def edit_image(self, repoman_server = None, orig_name = None, orig_owner = None, name = None, description = None, hypervisor = None, os_arch = None, os_type = None, os_variant = None, read_only = None, shared_with_users = None, shared_with_groups = None, unauthenticated_access = None, image_file = None):
         try:
             # Before we make changes to the image's metadata, let's get it's current
             # metadata.
-            metadata = self.get_repoman_client().describe_image(orig_owner + '/' + orig_name)
+            metadata = self.get_repoman_client(repoman_server).describe_image(orig_owner + '/' + orig_name)
 
             new_metadata = {}
             new_metadata['description'] = description
@@ -237,7 +237,7 @@ class Root():
             new_metadata['read_only'] = read_only
             new_metadata['unauthenticated_access'] = unauthenticated_access
 
-            self.get_repoman_client().modify_image(orig_owner + '/' + orig_name, **new_metadata)
+            self.get_repoman_client(repoman_server).modify_image(orig_owner + '/' + orig_name, **new_metadata)
 
             # Shared-with users and groups need to be modified seperately.
             if shared_with_users == None:
@@ -260,25 +260,25 @@ class Root():
             for user in current_shared_with_users:
                 if user not in shared_with_users:
                     cherrypy.log("Removing %s" % (user))
-                    self.get_repoman_client().unshare_with_user(orig_owner + '/' + name, user.split('/')[-1])
+                    self.get_repoman_client(repoman_server).unshare_with_user(orig_owner + '/' + name, user.split('/')[-1])
 
             for user in shared_with_users:
                 if user not in current_shared_with_users:
                     cherrypy.log("Adding %s" % (user))
-                    self.get_repoman_client().share_with_user(orig_owner + '/' + name, user.split('/')[-1])
+                    self.get_repoman_client(repoman_server).share_with_user(orig_owner + '/' + name, user.split('/')[-1])
 
             for group in current_shared_with_groups:
                 if group not in shared_with_groups:
                     cherrypy.log("Removing %s" % (group))
-                    self.get_repoman_client().unshare_with_group(orig_owner + '/' + name, group.split('/')[-1])
+                    self.get_repoman_client(repoman_server).unshare_with_group(orig_owner + '/' + name, group.split('/')[-1])
 
             for group in shared_with_groups:
                 if group not in current_shared_with_groups:
                     cherrypy.log("Adding %s" % (group))
-                    self.get_repoman_client().share_with_group(orig_owner + '/' + name, group.split('/')[-1])
+                    self.get_repoman_client(repoman_server).share_with_group(orig_owner + '/' + name, group.split('/')[-1])
 
             if image_file != None and image_file.file != None:
-                url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_repoman_username(), name)
+                url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_repoman_username(repoman_server), name)
 
                 # Compute total file size.
                 size = 0
@@ -305,7 +305,7 @@ class Root():
 
 
     @cherrypy.expose
-    def show_image_boot_form(self, owner, name):
+    def show_image_boot_form(self, repoman_server, owner, name):
         try:
             image = self.get_repoman_client().describe_image(owner + '/' + name)
             image_url = image['http_file_url']
