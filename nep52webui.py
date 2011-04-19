@@ -322,7 +322,7 @@ class Root():
             t.start()
             cherrypy.log('Image booter thread started.')
             #return html_utils.message('Boot process started.')
-            return html_utils.message('<a href="/webui/show_vm_boot_process?output_id=%s">Watch boot progress</a>' % (boot_process_id))
+            return html_utils.message('Image boot process initiated.<br><a href="/webui/show_vm_boot_process?output_id=%s">Watch boot progress</a>' % (boot_process_id))
         except Exception, e:
             return html_utils.exception_page(e)
 
