@@ -1,6 +1,7 @@
 import urllib
 import re
 import datetime
+import cherrypy
 
 class CloudInfoRenderer():
     def clouds_to_html_table(self, clouds_info, cloud_scheduler):
@@ -149,6 +150,7 @@ class JobRenderer():
 class RunningVmRenderer():
     def running_vms_to_html_table(self, cloud_scheduler, vm_list_output, resource):
         cloud = resource['network_address']
+        cherrypy.log('%s' % (vm_list_output))
         matches = re.findall('Workspace \#(\d+)\. (\d+\.\d+\.\d+\.\d+) \[ (\S+) \]\s+State: (\S+)', vm_list_output)
         html = ''
         html += '<h2>%s</h2>' % (cloud)

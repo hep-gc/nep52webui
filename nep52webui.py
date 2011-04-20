@@ -24,6 +24,7 @@ from forms import VmBootForm
 from forms import VmImageCreationForm
 from image_booter import ImageBooter
 from image_booter import image_boot_output_map
+from grapher import Grapher
 
 import html_utils
 import condor_utils
@@ -426,7 +427,30 @@ class Root():
             return html_utils.wrap("Got non-zero return code '%s' from '%s'. stderr was: %s" % (returncode, condor_rm, condor_err))
         return self.list_batch_jobs()
 
+    @cherrypy.expose
+    def get_overall_graph(self, cloud_scheduler):
+        try:
+            cherrypy.log('Getting information out of Cloud Scheduler at %s ...' % (cloud_scheduler))
+            cmd = ['cloud_status', '-s', cloud_scheduler, '-a', '-j']
+            cloud_info = json.loads(subprocess.check_output(cmd))
 
+            try:
+                #condor_q = ['/usr/bin/condor_q', '-l', '-pool %s' % (cloud_scheduler), '-name %s' % (cloud_scheduler)]
+                condor_q = ['/usr/bin/condor_q', '-l']
+                env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
+                condor_out = subprocess.check_output(condor_q, env=env)
+            except Exception, e:
+                return html_utils.exception_page(e)
+
+            job_classads = condor_utils.CondorQOutputParser().condor_q_to_classad_list(condor_out)
+
+            cherrypy.log('Using Grapher to create graph...')
+            graph_data = Grapher().get_overall_graph(cloud_info, job_classads)
+            cherrypy.response.headers['Content-Type'] = 'image/jpeg'
+            return graph_data
+        except Exception, e:
+            return html_utils.exception_page(e)
+    
 # Class which holds a file reference and the read callback
 class FileReader:
     def __init__(self, fp):
