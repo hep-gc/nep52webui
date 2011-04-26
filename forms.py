@@ -1,4 +1,5 @@
 from decimal import *
+import html_utils
 
 class VmImageCreationForm():
     def __init__(self, available_images):
@@ -150,24 +151,35 @@ class VmBootForm():
         self.image_metadata = image_metadata
         
     def get_html(self):
+        if self.image_metadata['os_arch'] == None:
+            return html_utils.message('OS architecture is not defined in the image metadata.  Please edit the image metadata and specify the OS architecture and try again.')
+
         html = ''
+
         html += """
 <html><head></head>
 <body>
 <form action="/webui/boot_vm" method="post">
   <table>
     <thead></thead>
-    <tbody>
+    <tbody>"""
+
+        html += """
       <tr>
 	<th align="right">Image name:</th><td><input type="text" name="image_name" size="40" value="%s"/></td>
-      </tr>
+      </tr>""" % (self.image_metadata['name'])
+
+        html += """
       <tr>
 	<th align="right">Image location:</th><td><input type="text" name="image_location" size="40" value="%s"/></td>
-      </tr>
+      </tr>""" % (self.image_metadata['http_file_url'])
+
+        html += """
       <tr>
 	<th align="right">Architecture:</th><td><input type="text" name="arch" size="40" value="%s"/></td>
-      </tr>
+      </tr>""" % (self.image_metadata['os_arch'])
 
+        html += """
       <tr>
 	<th align="right">Cloud:</th><td>
           <select name="cloud">
@@ -210,5 +222,5 @@ class VmBootForm():
   <INPUT type="submit" value="Boot">&nbsp;<input type="reset" value="Reset">
 </form>
 </body>
-</html>""" % (self.image_metadata['name'], self.image_metadata['http_file_url'], self.image_metadata['os_arch'])
+</html>""" 
         return html
