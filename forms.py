@@ -1,5 +1,6 @@
 from decimal import *
 import html_utils
+import cherrypy
 
 class VmImageCreationForm():
     def __init__(self, available_images):
@@ -195,8 +196,16 @@ class VmBootForm():
             <option value="2048">2048</option>
             <option value="4096">4096</option>
           </select></td>
-      </tr>
+      </tr>"""
 
+        # default value: minimum 5GB of space or current image size
+        blank_space_MB = max((1024**3) * 5, self.image_metadata['size'])/(1024**2)
+        html += """
+      <tr>
+	<th align="right">Blank space:</th><td><input type="text" name="blank_space_MB" size="10" value="%s"/>&nbsp;MBytes</td>
+      </tr>""" % (blank_space_MB)
+
+        html += """
       <tr>
 	<th align="right">Network:</th><td>
           <select name="network">

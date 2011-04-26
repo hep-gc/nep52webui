@@ -315,9 +315,9 @@ class Root():
         return html_utils.wrap(VmBootForm(image).get_html())
 
     @cherrypy.expose
-    def boot_vm(self, image_name=None, image_location=None, arch=None, cloud=None, ram=None, network=None, cpus=None):
+    def boot_vm(self, image_name=None, image_location=None, arch=None, cloud=None, ram=None, network=None, cpus=None, blank_space_MB=None):
         try:
-            t = ImageBooter(image_name, image_location, arch, cloud, ram, network, cpus, cherrypy.request.wsgi_environ['X509_USER_PROXY'])
+            t = ImageBooter(image_name, image_location, arch, cloud, ram, network, cpus, cherrypy.request.wsgi_environ['X509_USER_PROXY'], blank_space_MB)
             boot_process_id = t.get_boot_process_id()
             
             t.start()
