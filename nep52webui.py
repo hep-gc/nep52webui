@@ -446,8 +446,8 @@ class Root():
 
             cherrypy.log('Using Grapher to create graph...')
             graph_data = Grapher().get_overall_graph(cloud_info, job_classads)
-            cherrypy.response.headers['Content-Type'] = 'image/jpeg'
-            return graph_data
+            #cherrypy.response.headers['Content-Type'] = 'image/jpeg'
+            return html_utils.wrap(graph_data, refresh_time=30)
         except Exception, e:
             return html_utils.exception_page(e)
     
