@@ -34,5 +34,9 @@ class AppConfig():
         # TODO: make the following configurable via the config file
         return '/usr/local/gt5.0.3/bin/grid-proxy-info'
 
+    def get_overview_graph_update_period(self):
+        # TODO: make the following configurable via the config file
+        return 30
+
 # The globally accessible AppConfig instance.
 app_config = AppConfig()

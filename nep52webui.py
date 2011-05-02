@@ -10,6 +10,7 @@ import re
 import json
 import os
 import ConfigParser
+import datetime
 
 from repoman_client.client import RepomanClient
 from repoman_client.client import RepomanError
@@ -25,7 +26,9 @@ from forms import VmImageCreationForm
 from image_booter import ImageBooter
 from image_booter import image_boot_output_map
 from grapher import Grapher
+from grapher import OverviewGraphUpdaterThread
 
+from threading_utils import BackgroundCommand
 import html_utils
 import condor_utils
 from config import app_config
@@ -357,11 +360,29 @@ class Root():
             cmd = ['cloud_status', '-s', cloud_scheduler, '-a', '-j']
             clouds_info = json.loads(subprocess.check_output(cmd))
             html_for_resources = ''
+            background_commands = {}
+            resources = {}
             for resource in clouds_info['resources']:
-                cmd = ['/usr/local/nimbus-cloud-client-018-plus-extras/bin/vm-list', resource['network_address']]
+                resource_address = resource['network_address']
+                # skip over synnefo.westgrid.ca for now (Andre)
+                if resource_address == 'synnefo.westgrid.ca':
+                    continue
+
+                resources[resource_address] = resource
+
+                cmd = ['/usr/local/nimbus-cloud-client-018-plus-extras/bin/vm-list', resource_address]
                 env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
-                output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)
-                html_for_resources += RunningVmRenderer().running_vms_to_html_table(cloud_scheduler, output, resource)
+                background_command = BackgroundCommand(cmd, env)
+                background_commands[resource_address] = background_command
+                background_command.start()
+                background_command.join()
+
+            for resource_address in background_commands.keys():
+                #background_commands[resource_address].join()
+                output = background_commands[resource_address].get_output()
+                if output != None:
+                    html_for_resources += RunningVmRenderer().running_vms_to_html_table(cloud_scheduler, output, resources[resource_address])
+
 
             return html_utils.wrap(html_for_resources)
         except Exception, e:
@@ -430,23 +451,23 @@ class Root():
     @cherrypy.expose
     def get_overall_graph(self, cloud_scheduler):
         try:
-            cherrypy.log('Getting information out of Cloud Scheduler at %s ...' % (cloud_scheduler))
-            cmd = ['cloud_status', '-s', cloud_scheduler, '-a', '-j']
-            cloud_info = json.loads(subprocess.check_output(cmd))
+            if False:
+                cmd = ['cloud_status', '-s', cloud_scheduler, '-a', '-j']
+                cloud_info = json.loads(subprocess.check_output(cmd))
 
-            try:
-                #condor_q = ['/usr/bin/condor_q', '-l', '-pool %s' % (cloud_scheduler), '-name %s' % (cloud_scheduler)]
-                condor_q = ['/usr/bin/condor_q', '-l']
-                env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
-                condor_out = subprocess.check_output(condor_q, env=env)
-            except Exception, e:
-                return html_utils.exception_page(e)
+                try:
+                    #condor_q = ['/usr/bin/condor_q', '-l', '-pool %s' % (cloud_scheduler), '-name %s' % (cloud_scheduler)]
+                    condor_q = ['/usr/bin/condor_q', '-l']
+                    #env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
+                    env={'X509_USER_CERT':'/etc/grid-security/nep52webuicert.pem', 'X509_USER_KEY':'/etc/grid-security/nep52webuikey.pem'}
+                    condor_out = subprocess.check_output(condor_q, env=env)
+                except Exception, e:
+                    return html_utils.exception_page(e)
 
-            job_classads = condor_utils.CondorQOutputParser().condor_q_to_classad_list(condor_out)
+                job_classads = condor_utils.CondorQOutputParser().condor_q_to_classad_list(condor_out)
+                graph_data = Grapher().get_overall_graph(cloud_info, job_classads)
 
-            cherrypy.log('Using Grapher to create graph...')
-            graph_data = Grapher().get_overall_graph(cloud_info, job_classads)
-            #cherrypy.response.headers['Content-Type'] = 'image/jpeg'
+            graph_data = Grapher().get_overall_graph()
             return html_utils.wrap(graph_data, refresh_time=30)
         except Exception, e:
             return html_utils.exception_page(e)
@@ -461,3 +482,8 @@ class FileReader:
 
 application = cherrypy.Application(Root(), script_name=None, config=None)
 cherrypy.log('nep52webui app started')
+
+# Start the backround threads
+
+overview_graph_updater = OverviewGraphUpdaterThread('condor.heprc.uvic.ca')
+overview_graph_updater.start()
