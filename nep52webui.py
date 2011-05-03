@@ -25,8 +25,7 @@ from forms import VmBootForm
 from forms import VmImageCreationForm
 from image_booter import ImageBooter
 from image_booter import image_boot_output_map
-from grapher import Grapher
-from grapher import OverviewGraphUpdaterThread
+import grapher
 
 from threading_utils import BackgroundCommand
 import html_utils
@@ -451,23 +450,7 @@ class Root():
     @cherrypy.expose
     def get_overall_graph(self, cloud_scheduler):
         try:
-            if False:
-                cmd = ['cloud_status', '-s', cloud_scheduler, '-a', '-j']
-                cloud_info = json.loads(subprocess.check_output(cmd))
-
-                try:
-                    #condor_q = ['/usr/bin/condor_q', '-l', '-pool %s' % (cloud_scheduler), '-name %s' % (cloud_scheduler)]
-                    condor_q = ['/usr/bin/condor_q', '-l']
-                    #env = {'X509_USER_PROXY': cherrypy.request.wsgi_environ['X509_USER_PROXY']}
-                    env={'X509_USER_CERT':'/etc/grid-security/nep52webuicert.pem', 'X509_USER_KEY':'/etc/grid-security/nep52webuikey.pem'}
-                    condor_out = subprocess.check_output(condor_q, env=env)
-                except Exception, e:
-                    return html_utils.exception_page(e)
-
-                job_classads = condor_utils.CondorQOutputParser().condor_q_to_classad_list(condor_out)
-                graph_data = Grapher().get_overall_graph(cloud_info, job_classads)
-
-            graph_data = Grapher().get_overall_graph()
+            graph_data = grapher.NonDirGrapher().get_overall_graph()
             return html_utils.wrap(graph_data, refresh_time=30)
         except Exception, e:
             return html_utils.exception_page(e)
@@ -485,5 +468,5 @@ cherrypy.log('nep52webui app started')
 
 # Start the backround threads
 
-overview_graph_updater = OverviewGraphUpdaterThread('condor.heprc.uvic.ca')
+overview_graph_updater = grapher.OverviewGraphUpdaterThread('condor.heprc.uvic.ca')
 overview_graph_updater.start()
