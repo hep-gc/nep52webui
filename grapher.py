@@ -8,11 +8,38 @@ import threading
 import condor_utils
 import json
 import time
+import shutil
 from config import app_config
 
+class GraphFileContainer():
+    file_max = 20
+
+    def __init__(self):
+        self.graph_files = []
+        cherrypy.log('GraphFileContainer instance created.')
+
+    def add(self, graph_file):
+        # Make an internal copy first and then keep track of that copy.
+        (copy_fd, copy_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.jpg')
+        os.close(copy_fd)
+        shutil.copy2(graph_file, copy_path)
+        self.graph_files.append((datetime.datetime.today(), copy_path))
+
+        if(len(self.graph_files) > self.file_max):
+            (ts, file_path) = self.graph_files.pop(0)
+            cherrypy.log('Deleting %s' % (file_path))
+            os.remove(file_path)
+        
+        return
+
+    def get_files(self):
+        return self.graph_files
+        
+    
 class Grapher():
     def __init__(self):
-        pass
+        self.graph_file_container = GraphFileContainer()
+
 
     def get_overall_graph(self):
         imap_file = open(self.get_imap_file_path(), 'r')
@@ -25,14 +52,17 @@ class Grapher():
         # Get graphviz input data.
         graph_input_file_path = self.create_graph_input(cloud_info, job_classads)
         # Get graphviz command to run
-        (graph_output_fd, graph_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
-        (imap_output_fd, imap_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
+        (graph_output_fd, graph_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.jpg')
+        os.close(graph_output_fd)
+        (imap_output_fd, imap_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.imap')
+        os.close(imap_output_fd)
         cmd = self.get_graph_command(graph_input_file_path,graph_output_path,imap_output_path)
         # Run graphviz command
         cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         # Cleanup graphiz input file
         os.remove(graph_input_file_path)
         # Rename temp output files to non-temp files (overwrites previous graph files)
+        self.graph_file_container.add(graph_output_path)
         os.rename(graph_output_path, self.get_graph_file_path())
         os.rename(imap_output_path, self.get_imap_file_path())
         return
@@ -43,6 +73,9 @@ class Grapher():
     def get_imap_file_path(self):
         return '/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.imap'
 
+    def get_movie_file_path(self):
+        return '/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.gif'
+
     def get_name(self):
         raise NotImplementedError()
 
@@ -51,6 +84,49 @@ class Grapher():
 
     def get_graph_command(self, graph_input_file_path, graph_output_file_path, imap_output_file_path):
         raise NotImplementedError()
+
+    def create_movie(self):
+        graph_files = self.graph_file_container.get_files()
+        if len(graph_files) > 1:
+            movie_output_path = self.get_movie_file_path()
+            (new_movie_output_fd, new_movie_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.gif')
+            os.close(new_movie_output_fd)
+            (resized_frame_fd, resized_frame_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.resized-frame.jpg')
+            os.close(resized_frame_fd)
+
+            (ts, new_frame) = graph_files[-1]
+            cmd = []
+            cmd.append('/usr/bin/convert')
+            cmd.append(new_frame)
+            cmd.append('-resize')
+            cmd.append('800x800>')
+            cmd.append('-background')
+            cmd.append('white')
+            cmd.append('-gravity')
+            cmd.append('center')
+            cmd.append('-extent')
+            cmd.append('800x800')
+            cmd.append(resized_frame_path)
+            cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+
+            cmd = []
+            cmd.append('/usr/bin/convert')
+            try:
+                if os.stat(movie_output_path):
+                    cmd.append(movie_output_path)
+            except Exception, e:
+                pass
+            cmd.append('-delay')
+            cmd.append('100')
+            cmd.append(resized_frame_path)
+            cmd.append(new_movie_output_path)
+            
+            cmd_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            os.remove(resized_frame_path)
+
+            os.rename(new_movie_output_path, movie_output_path)
+            cherrypy.log('%s created/updated' % (movie_output_path))
+
 
 
 
@@ -346,6 +422,20 @@ class NeatoGrapher(Grapher):
         return input_file_path
 
 
+class GraphersContainer():
+    graphers = None
+    def __init__(self):
+        self.graphers = []
+        self.graphers.append(NonDirGrapher())
+        self.graphers.append(RadialGrapher2())
+        self.graphers.append(NeatoGrapher())
+    
+    def get_graphers(self):
+        return self.graphers
+
+
+# The globally accessible GraphersContainer instance.
+graphers_container = GraphersContainer()
 
 
 class OverviewGraphUpdaterThread(threading.Thread):
@@ -377,17 +467,14 @@ class OverviewGraphUpdaterThread(threading.Thread):
 
                 job_classads = condor_utils.CondorQOutputParser().condor_q_to_classad_list(condor_out)
 
-                graphers = []
-                graphers.append(NonDirGrapher())
-                graphers.append(RadialGrapher2())
-                graphers.append(NeatoGrapher())
-
-                for g in graphers:
+                for g in graphers_container.get_graphers():
                     g.create_overall_graph(cloud_info, job_classads)
+                    #g.create_movie()
 
                 time.sleep(app_config.get_overview_graph_update_period())
                 
 
         except Exception, e:
             cherrypy.log('%s' % e)
-        
+
+

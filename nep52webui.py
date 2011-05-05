@@ -450,7 +450,7 @@ class Root():
     @cherrypy.expose
     def get_overall_graph(self, cloud_scheduler):
         try:
-            graph_data = grapher.NonDirGrapher().get_overall_graph()
+            graph_data = grapher.graphers_container.get_graphers()[0].get_overall_graph()
             return html_utils.wrap(graph_data, refresh_time=30)
         except Exception, e:
             return html_utils.exception_page(e)
