@@ -206,6 +206,7 @@ class NonDirGrapher(Grapher):
         input_file = os.fdopen(input_fd, 'w+b')
         input_file.write('graph G {\n')
         input_file.write('label = "%s";\n' % (datetime.datetime.today()))
+        vms = []
         for resource in cloud_info['resources']:
             input_file.write('"%s" [label="%s"];\n' % (resource['network_address'], resource['name']))
             input_file.write('CS -- "%s";\n' % (resource['network_address']))
@@ -217,13 +218,16 @@ class NonDirGrapher(Grapher):
                     node_color = 'green'
 
                 label_hostname = '???'
+                node_id = uuid.uuid1().int
                 if vm['hostname'] != None and len(vm['hostname']) > 0:
                     label_hostname = vm['hostname'].split('.')[0]
-                input_file.write('"%s" [color=%s, shape=box, label="%s\\n%s"];\n' % (vm['hostname'], node_color, label_hostname, vm['vmtype']))
-                input_file.write('"%s" -- "%s";\n' % (resource['network_address'], vm['hostname']))
+                    node_id = vm['hostname']
+                    vms.append(vm['hostname'])
+                input_file.write('"%s" [color=%s, shape=box, label="%s\\n%s"];\n' % (node_id, node_color, label_hostname, vm['vmtype']))
+                input_file.write('"%s" -- "%s";\n' % (resource['network_address'], node_id))
 
         for job_classad in job_classads:
-            if job_classad['JobStatus'] == '2':
+            if (job_classad['JobStatus'] == '2') and (job_classad['RemoteHost'] in vms):
                 input_file.write('"%s" [style=rounded, shape=none, label="%s", URL="/webui/list_batch_job?job_id=%s"];\n' % (job_classad['GlobalJobId'], job_classad['GlobalJobId'].split('#')[1], job_classad['GlobalJobId'].split('#')[1]))
                 input_file.write('"%s" -- "%s";\n' % (job_classad['RemoteHost'], job_classad['GlobalJobId']))
 
@@ -266,6 +270,7 @@ class RadialGrapher2(Grapher):
         #input_file.write('overlap=scale;\n')
         input_file.write('label = "%s";\n' % (datetime.datetime.today()))
         input_file.write('CS [shape=box, style=filled, color=linen];\n')
+        vms = []
         for resource in cloud_info['resources']:
             input_file.write('"%s" [label="%s"];\n' % (resource['network_address'], resource['name']))
             input_file.write('CS -> "%s";\n' % (resource['network_address']))
@@ -280,14 +285,17 @@ class RadialGrapher2(Grapher):
                     edge_style = 'filled'
 
                 label_hostname = '???'
+                node_id = uuid.uuid1().int
                 if vm['hostname'] != None and len(vm['hostname']) > 0:
                     label_hostname = vm['hostname'].split('.')[0]
-                input_file.write('"%s" [style=filled, color=%s, shape=box, height=0.2, width=0.2, label=""];\n' % (vm['hostname'], node_color))
-                input_file.write('"%s" -> "%s" [style=%s];\n' % (resource['network_address'], vm['hostname'], edge_style))
+                    node_id = vm['hostname']
+                    vms.append(vm['hostname'])
+                input_file.write('"%s" [style=filled, color=%s, shape=box, height=0.2, width=0.2, label=""];\n' % (node_id, node_color))
+                input_file.write('"%s" -> "%s" [style=%s];\n' % (resource['network_address'], node_id, edge_style))
 
         for job_classad in job_classads:
-            if job_classad['JobStatus'] == '2':
-                input_file.write('"%s" [style=rounded, shape=none, label="%s", URL="/webui/list_batch_job?job_id=%s"];\n' % (job_classad['GlobalJobId'], job_classad['GlobalJobId'].split('#')[1], job_classad['GlobalJobId'].split('#')[1]))
+            if (job_classad['JobStatus'] == '2') and (job_classad['RemoteHost'] in vms):
+                input_file.write('"%s" [shape=none, label="%s", URL="/webui/list_batch_job?job_id=%s"];\n' % (job_classad['GlobalJobId'], job_classad['GlobalJobId'].split('#')[1], job_classad['GlobalJobId'].split('#')[1]))
                 input_file.write('"%s" -> "%s";\n' % (job_classad['RemoteHost'], job_classad['GlobalJobId']))
 
         if False:
@@ -385,6 +393,7 @@ class NeatoGrapher(Grapher):
         input_file.write('ratio=auto;\n')
         input_file.write('label = "%s";\n' % (datetime.datetime.today()))
         input_file.write('CS [shape=box, style=filled, color=linen];\n')
+        vms = []
         for resource in cloud_info['resources']:
             input_file.write('"%s" [label="%s"];\n' % (resource['network_address'], resource['name']))
             input_file.write('CS -- "%s";\n' % (resource['network_address']))
@@ -399,13 +408,16 @@ class NeatoGrapher(Grapher):
                     edge_style = 'filled'
 
                 label_hostname = '???'
+                node_id = uuid.uuid1().int
                 if vm['hostname'] != None and len(vm['hostname']) > 0:
                     label_hostname = vm['hostname'].split('.')[0]
-                input_file.write('"%s" [style=filled, color=%s, shape=box, height=0.2, width=0.2, label=""];\n' % (vm['hostname'], node_color))
-                input_file.write('"%s" -- "%s" [style=%s];\n' % (resource['network_address'], vm['hostname'], edge_style))
+                    node_id = vm['hostname']
+                    vms.append(vm['hostname'])
+                input_file.write('"%s" [style=filled, color=%s, shape=box, height=0.2, width=0.2, label=""];\n' % (node_id, node_color))
+                input_file.write('"%s" -- "%s" [style=%s];\n' % (resource['network_address'], node_id, edge_style))
 
         for job_classad in job_classads:
-            if job_classad['JobStatus'] == '2':
+            if (job_classad['JobStatus'] == '2') and (job_classad['RemoteHost'] in vms):
                 input_file.write('"%s" [style=rounded, shape=none, label="%s", URL="/webui/list_batch_job?job_id=%s"];\n' % (job_classad['GlobalJobId'], job_classad['GlobalJobId'].split('#')[1], job_classad['GlobalJobId'].split('#')[1]))
                 input_file.write('"%s" -- "%s";\n' % (job_classad['RemoteHost'], job_classad['GlobalJobId']))
 
