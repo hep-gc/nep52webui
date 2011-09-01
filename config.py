@@ -38,5 +38,17 @@ class AppConfig():
         # TODO: make the following configurable via the config file
         return 30
 
+    def get_accounting_db_host(self):
+        return self.config.get('accounting', 'dbhost')
+
+    def get_accounting_db_name(self):
+        return self.config.get('accounting', 'dbname')
+
+    def get_accounting_db_username(self):
+        return self.config.get('accounting', 'dbusername')
+
+    def get_accounting_db_password(self):
+        return self.config.get('accounting', 'dbpassword')
+
 # The globally accessible AppConfig instance.
 app_config = AppConfig()

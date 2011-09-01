@@ -19,6 +19,7 @@ from html_renderers import VmImageRenderer
 from html_renderers import JobRenderer
 from html_renderers import RunningVmRenderer
 from html_renderers import CloudInfoRenderer
+from html_renderers import AccountingInfoRenderer
 
 from forms import VmImageEditForm
 from forms import VmBootForm
@@ -26,10 +27,12 @@ from forms import VmImageCreationForm
 from image_booter import ImageBooter
 from image_booter import image_boot_output_map
 import grapher
+from accounting import Accountant
 
 from threading_utils import BackgroundCommand
 import html_utils
 import condor_utils
+
 from config import app_config
 
 import pycurl 
@@ -454,7 +457,30 @@ class Root():
             return html_utils.wrap(graph_data, refresh_time=30)
         except Exception, e:
             return html_utils.exception_page(e)
-    
+
+    @cherrypy.expose
+    def get_overall_accounting_stats(self):
+        try:
+            return html_utils.wrap(AccountingInfoRenderer().get_overall_accoutning_info_page())
+        except Exception, e:
+            return html_utils.exception_page(e)
+
+    @cherrypy.expose
+    def get_total_number_of_jobs_per_user_plot(self):
+        try:
+            cherrypy.response.headers['Content-Type'] = 'image/png'
+            return Accountant().get_total_number_of_jobs_per_user_plot()
+        except Exception, e:
+            return html_utils.exception_page(e)
+
+    @cherrypy.expose
+    def get_total_number_of_jobs_per_remote_host_plot(self):
+        try:
+            cherrypy.response.headers['Content-Type'] = 'image/png'
+            return Accountant().get_total_number_of_jobs_per_remote_host_plot()
+        except Exception, e:
+            return html_utils.exception_page(e)
+
 # Class which holds a file reference and the read callback
 class FileReader:
     def __init__(self, fp):
@@ -468,5 +494,5 @@ cherrypy.log('nep52webui app started')
 
 # Start the backround threads
 
-overview_graph_updater = grapher.OverviewGraphUpdaterThread('condor.heprc.uvic.ca')
+overview_graph_updater = grapher.GraphUpdaterThread('condor.heprc.uvic.ca')
 overview_graph_updater.start()

@@ -41,14 +41,14 @@ class Grapher():
         self.graph_file_container = GraphFileContainer()
 
 
-    def get_overall_graph(self):
+    def get_hourglass_graph_with_imap(self):
         imap_file = open(self.get_imap_file_path(), 'r')
         imap_data = imap_file.read()
         imap_file.close()
 
         return '<img src="/graphs/%s" USEMAP="#G"/>\n%s' % (self.get_graph_file_path().split('/')[-1], imap_data)
 
-    def create_overall_graph(self, cloud_info, job_classads):
+    def create_graph(self, cloud_info, job_classads):
         # Get graphviz input data.
         graph_input_file_path = self.create_graph_input(cloud_info, job_classads)
         # Get graphviz command to run
@@ -131,63 +131,7 @@ class Grapher():
 
 
 
-class LinearGrapher(Grapher):
-
-    def __init__(self):
-        Grapher.__init__(self)
-
-    def get_name(self):
-        return self.__class__.__name__
-
-    def get_graph_command(self, graph_input_file_path, graph_output_file_path, imap_output_file_path):
-        cmd = ['/usr/bin/dot', '-Tjpg', '-o', graph_output_file_path, '-Tcmapx', '-o', imap_output_file_path, graph_input_file_path]
-        return cmd
-
-
-    def create_graph_input(self, cloud_info, job_classads):
-        input_file_path = None
-        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
-
-        input_file = os.fdopen(input_fd, 'w+b')
-        input_file.write('digraph G {\n')
-        input_file.write('label = "%s";\n' % (datetime.datetime.today()))
-        for resource in cloud_info['resources']:
-            input_file.write('"%s" [label="%s"];\n' % (resource['network_address'], resource['name']))
-            input_file.write('CS -> "%s";\n' % (resource['network_address']))
-            for vm in resource['vms']:
-                node_color = 'black'
-                if vm['status'] == "Error":
-                    node_color = 'red'
-                elif vm['status'] == "Running":
-                    node_color = 'green'
-
-                label_hostname = '???'
-                if vm['hostname'] != None and len(vm['hostname']) > 0:
-                    label_hostname = vm['hostname'].split('.')[0]
-                input_file.write('"%s" [color=%s, shape=box, label="%s\\n%s"];\n' % (vm['hostname'], node_color, label_hostname, vm['vmtype']))
-                input_file.write('"%s" -> "%s";\n' % (resource['network_address'], vm['hostname']))
-
-        for job_classad in job_classads:
-            if job_classad['JobStatus'] == '2':
-                input_file.write('"%s" [style=rounded, shape=none, label="%s", URL="/webui/list_batch_job?job_id=%s"];\n' % (job_classad['GlobalJobId'], job_classad['GlobalJobId'].split('#')[1], job_classad['GlobalJobId'].split('#')[1]))
-                input_file.write('"%s" -> "%s";\n' % (job_classad['RemoteHost'], job_classad['GlobalJobId']))
-
-        if True:
-            for job_classad in job_classads:
-                if job_classad['JobStatus'] == '1':
-                    input_file.write('"%s" [style=rounded, shape=none, label="%s", URL="/webui/list_batch_job?job_id=%s"];\n' % (job_classad['GlobalJobId'], job_classad['GlobalJobId'].split('#')[1], job_classad['GlobalJobId'].split('#')[1]))
-                    input_file.write('"%s" -> "Q";\n' % (job_classad['GlobalJobId']))
-            input_file.write('Q -> CS')
-
-        input_file.write('}\n')
-        input_file.close()
-        return input_file_path
-
-
-
-
-
-class NonDirGrapher(Grapher):
+class HourglassGrapher(Grapher):
 
     def __init__(self):
         Grapher.__init__(self)
@@ -246,7 +190,7 @@ class NonDirGrapher(Grapher):
 
 
 
-class RadialGrapher2(Grapher):
+class CompactRadialGrapher(Grapher):
 
     def __init__(self):
         Grapher.__init__(self)
@@ -438,8 +382,8 @@ class GraphersContainer():
     graphers = None
     def __init__(self):
         self.graphers = []
-        self.graphers.append(NonDirGrapher())
-        self.graphers.append(RadialGrapher2())
+        self.graphers.append(HourglassGrapher())
+        self.graphers.append(CompactRadialGrapher())
         self.graphers.append(NeatoGrapher())
     
     def get_graphers(self):
@@ -450,7 +394,7 @@ class GraphersContainer():
 graphers_container = GraphersContainer()
 
 
-class OverviewGraphUpdaterThread(threading.Thread):
+class GraphUpdaterThread(threading.Thread):
     cloud_scheduler = None
     should_stop = False
 
@@ -463,7 +407,7 @@ class OverviewGraphUpdaterThread(threading.Thread):
 
     def run(self):
         try:
-            cherrypy.log('Overview graph update thread started.  Refresh every %ss' % app_config.get_overview_graph_update_period())
+            cherrypy.log('Graph update thread started.  Wait between updates: %ss' % app_config.get_overview_graph_update_period())
 
             while not self.should_stop:
                 cmd = ['cloud_status', '-s', self.cloud_scheduler, '-a', '-j']
