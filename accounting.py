@@ -72,7 +72,7 @@ class Accountant():
         r = self.db.store_result()
         data = []
         for row in r.fetch_row(maxrows=0):
-            data.append('%s,%d,%d' % (row[0], row[1], row[2]))
+            data.append('"%s",%d,%d' % (row[0], row[1], row[2]))
         commands = ["set title 'Total cloud usage by user'", "set xlabel 'User'", "set ylabel 'minutes'", "set nokey", "set datafile separator ','", "set terminal png enhanced size 400,300 font arial 11", "set output", "set style data histogram", "set style histogram cluster gap 1", "set style fill solid border -1", "set auto x", "set xtics rotate by -60", "plot [] [0:] '-' using 2:xtic(1) with histogram"]
         args = ["gnuplot", "-e", (";".join([str(c) for c in commands]))]
         #cherrypy.log('Running gnuplot command:\n%s' % (args))
@@ -87,7 +87,7 @@ class Accountant():
         r = self.db.store_result()
         data = []
         for row in r.fetch_row(maxrows=0):
-            data.append('%s,%d' % (row[0], row[1]))
+            data.append('"%s",%d' % (row[0], row[1]))
         commands = ["set title 'Jobs per host'", "set xlabel 'Host'", "set ylabel '# of jobs'", "set nokey", "set datafile separator ','", "set terminal png enhanced size 800,400 font arial 11", "set output", "set style data histogram", "set style histogram cluster gap 1", "set style fill solid border -1", "set auto x", "set xtics rotate by -90", "plot [] [0:] '-' using 2:xtic(1) with histogram"]
         args = ["gnuplot", "-e", (";".join([str(c) for c in commands]))]
         #cherrypy.log('Running gnuplot command:\n%s' % (args))
@@ -105,4 +105,38 @@ class Accountant():
         data = []
         return r.fetch_row(maxrows=0)
 
+    # This method will return a dictionary that contains the cloud names as keys, and the sum of
+    # JobDuration (minutes) as values.
+    def get_cloud_usage(self):
+        data = {}
+        filters = {}
+        filters['NRC'] = '%.nrc.ca'
+        filters['FGHotel'] = '%.futuregrid.org'
+        filters['Hermes'] = 'hermes-xen%'
+        filters['Elephant'] = 'elephant%'
+        for cloud in filters:
+            self.db.query("""SELECT SUM(JobDuration) FROM completed_jobs WHERE RemoteHost LIKE '%s'""" % (filters[cloud]))
+            r = self.db.store_result()
+            data[cloud] = r.fetch_row()[0][0]
+        return data
 
+    def get_cloud_usage_plot(self):
+        data = []
+        cloud_usage_data = self.get_cloud_usage()
+        for cloud in cloud_usage_data:
+            if cloud_usage_data[cloud] != None:
+                data.append('"%s",%d' % (cloud, cloud_usage_data[cloud]/60))
+            else:
+                data.append('"%s",%d' % (cloud, 0))
+        commands = ["unset ytics", "set nokey", "set datafile separator ','", "set terminal png enhanced size 200,150 font arial 11", "set output", "set style data histogram", "set style histogram cluster gap 1", "set style fill solid border -1", "set xtics rotate by -90", "plot [] [0:] '-' using 2:xtic(1) with histogram"]
+        args = ["gnuplot", "-e", (";".join([str(c) for c in commands]))]
+        program = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for line in data:
+            program.stdin.write(str(line)+os.linesep)
+        program.stdin.close()
+        return program.stdout.read()
+
+
+            
+        
+        

@@ -218,11 +218,31 @@ class AccountingInfoRenderer():
         #html += '<tr><td>Total remote wallclock time:<br><small>(RemoteWallClockTime - CumulativeSuspensionTime)</small></td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_remote_wallclock_time()))
         html += '</tbody></table>'
 
+        html += '<h2>Cloud Usage</h2>'
+        html += '<table><thead><tr><th>Cloud</th><th>Total job duration</th></tr></thead><tbody>'
+        cloud_usage_data =  accountant.get_cloud_usage()
+        total_duration = accountant.get_total_job_duration()
+        tr = 0
+        if cloud_usage_data != None:
+            for cloud in cloud_usage_data:
+                html += '<tr>'
+                if cloud_usage_data[cloud] == None:
+                    html += '<td>%s</td><td>(no data)</td>' % (cloud)
+                else:
+                    html += '<td>%s</td><td>%s (%d %%)</td>' % (cloud, datetime.timedelta(seconds=cloud_usage_data[cloud]), (cloud_usage_data[cloud]/total_duration)*100)
+                if tr == 0:
+                    html += '<td rowspan=%d><img src="get_cloud_usage_plot"/></td>' % (len(cloud_usage_data))
+                else:
+                    html += '<td></td>'
+                html += '</tr>'
+                tr += 1
+            html += '</tbody></table>&nbsp;'
+
+
         html += '<table class="sortable"><thead><tr><th>Owner</th><th>Completed jobs</th><th>Total job duration</th></tr></thead><tbody>'
         for row in accountant.get_total_number_of_jobs_per_user():
             html += '<tr><td>%s</td><td>%d</td><td>%s (%d %%)</td></tr>' % (row[0], row[1], row[2], row[3])
         html += '</tbody></table>'
         html += '<img src="get_total_number_of_jobs_per_user_plot"/>'
-        html += '<img src="get_total_number_of_jobs_per_remote_host_plot"/>'
         html += '</body></html>'
         return html
