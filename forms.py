@@ -153,7 +153,7 @@ class VmBootForm():
         
     def get_html(self):
         if self.image_metadata['os_arch'] == None:
-            return html_utils.message('OS architecture is not defined in the image metadata.  Please edit the image metadata and specify the OS architecture and try again.')
+            self.image_metadata['os_arch'] = 'x86';
 
         html = ''
 
