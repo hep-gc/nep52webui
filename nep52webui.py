@@ -106,12 +106,13 @@ class Root():
         user_proxy = cherrypy.request.wsgi_environ['X509_USER_PROXY']
         try:
             images = self.get_repoman_client(repoman_server).list_current_user_images()
+            images_shared_with_user =  self.get_repoman_client(repoman_server).list_images_shared_with_user()
         except Exception, e:
             return html_utils.exception_page(e)
-        if(len(images) == 0):
-            return html_utils.wrap("You do not own any images on %s." % (repoman_server))
+        if(len(images) == 0 and len(images_shared_with_user) == 0):
+            return html_utils.wrap("You do not have access to any images on %s." % (repoman_server))
         else:
-            return html_utils.wrap(VmImageRenderer().images_to_html_table(images, repoman_server, show_actions=True))
+            return html_utils.wrap(VmImageRenderer().images_to_html_table(images + images_shared_with_user, repoman_server, show_actions=True))
 
 
 
@@ -179,6 +180,7 @@ class Root():
 
             # Proceed and create the new image metadata.
             self.get_repoman_client().create_image_metadata(**args)
+            cherrypy.log('New image metadata created.')
 
             if image_source == 'from_uploaded_file' and image_file != None and image_file.file != None:
                 url = 'https://vmrepo.cloud.nrc.ca/api/images/raw/%s/%s' % (self.get_repoman_username(), image_name)
@@ -204,7 +206,7 @@ class Root():
 
         except Exception, e:
             return html_utils.exception_page(e)
-        return self.list_current_user_images()
+        return html_utils.wrap('New image created.')
 
     @cherrypy.expose
     def delete_image(self, repoman_server, owner, name):
