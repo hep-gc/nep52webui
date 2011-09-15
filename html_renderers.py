@@ -208,6 +208,7 @@ class AccountingInfoRenderer():
         accountant = Accountant()
         html = ''
         html += '<p>From %s to %s</p>' % (accountant.get_earliest_timestamp(), datetime.datetime.now())
+        html += '<br>Click <a href="https://babar.cloud.nrc.ca/webui/get_job_history_plot">here</a> for a plot of all jobs per VM.'
         html += '<table><thead></thead><tbody>'
         html += '<tr><td>Total # of jobs:</td><td>%s</td>' % (accountant.get_total_number_of_jobs())
         html += '<tr><td>Total job runtime:</td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_job_duration()))
@@ -215,7 +216,7 @@ class AccountingInfoRenderer():
         html += '<tr><td>Average job queued time:</td><td>%s</td>' % (datetime.timedelta(seconds=float(accountant.get_avg_job_queued_time())))
         html += '<tr><td>Total remote system CPU:</td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_remote_sys_cpu()))
         html += '<tr><td>Total remote user CPU:</td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_remote_user_cpu()))
-        #html += '<tr><td>Total remote wallclock time:<br><small>(RemoteWallClockTime - CumulativeSuspensionTime)</small></td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_remote_wallclock_time()))
+        html += '<tr><td>Total remote wallclock time:<br><small>(RemoteWallClockTime - CumulativeSuspensionTime)</small></td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_remote_wallclock_time()))
         html += '</tbody></table>'
 
         html += '<h2>Cloud Usage</h2>'
@@ -241,7 +242,7 @@ class AccountingInfoRenderer():
 
         html += '<table class="sortable"><thead><tr><th>Owner</th><th>Completed jobs</th><th>Total job duration</th></tr></thead><tbody>'
         for row in accountant.get_total_number_of_jobs_per_user():
-            html += '<tr><td>%s</td><td>%d</td><td>%s (%d %%)</td></tr>' % (row[0], row[1], row[2], row[3])
+            html += '<tr><td>%s</td><td>%d</td><td>%s (%d %%)</td></tr>' % (row[0], row[1],  datetime.timedelta(seconds=row[2]), row[3])
         html += '</tbody></table>'
         html += '<img src="get_total_number_of_jobs_per_user_plot"/>'
         html += '</body></html>'

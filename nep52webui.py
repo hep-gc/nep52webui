@@ -490,6 +490,14 @@ class Root():
             return Accountant().get_cloud_usage_plot()
         except Exception, e:
             return html_utils.exception_page(e)
+
+    @cherrypy.expose
+    def get_job_history_plot(self):
+        try:
+            cherrypy.response.headers['Content-Type'] = 'image/png'
+            return Accountant().get_job_history_plot()
+        except Exception, e:
+            return html_utils.exception_page(e)
         
 
 # Class which holds a file reference and the read callback
