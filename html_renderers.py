@@ -208,7 +208,7 @@ class AccountingInfoRenderer():
         accountant = Accountant()
         html = ''
         html += '<p>From %s to %s</p>' % (accountant.get_earliest_timestamp(), datetime.datetime.now())
-        html += '<br>Click <a href="https://babar.cloud.nrc.ca/webui/get_job_history_plot">here</a> for a plot of all jobs per VM.'
+        html += '<br>Click <a href="https://science.cloud.nrc.ca/webui/get_job_history_plot">here</a> for a plot of all jobs per VM.'
         html += '<table><thead></thead><tbody>'
         html += '<tr><td>Total # of jobs:</td><td>%s</td>' % (accountant.get_total_number_of_jobs())
         html += '<tr><td>Total job runtime:</td><td>%s</td>' % (datetime.timedelta(seconds=accountant.get_total_job_duration()))

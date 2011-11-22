@@ -20,7 +20,7 @@ class GraphFileContainer():
 
     def add(self, graph_file):
         # Make an internal copy first and then keep track of that copy.
-        (copy_fd, copy_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.jpg')
+        (copy_fd, copy_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs', suffix='.jpg')
         os.close(copy_fd)
         shutil.copy2(graph_file, copy_path)
         self.graph_files.append((datetime.datetime.today(), copy_path))
@@ -52,9 +52,9 @@ class Grapher():
         # Get graphviz input data.
         graph_input_file_path = self.create_graph_input(cloud_info, job_classads)
         # Get graphviz command to run
-        (graph_output_fd, graph_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.jpg')
+        (graph_output_fd, graph_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs', suffix='.jpg')
         os.close(graph_output_fd)
-        (imap_output_fd, imap_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.imap')
+        (imap_output_fd, imap_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs', suffix='.imap')
         os.close(imap_output_fd)
         cmd = self.get_graph_command(graph_input_file_path,graph_output_path,imap_output_path)
         # Run graphviz command
@@ -68,13 +68,13 @@ class Grapher():
         return
 
     def get_graph_file_path(self):
-        return '/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.jpg'
+        return '/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.jpg'
 
     def get_imap_file_path(self):
-        return '/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.imap'
+        return '/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.imap'
 
     def get_movie_file_path(self):
-        return '/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.gif'
+        return '/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs/overview_graph.' + self.get_name() + '.gif'
 
     def get_name(self):
         raise NotImplementedError()
@@ -89,9 +89,9 @@ class Grapher():
         graph_files = self.graph_file_container.get_files()
         if len(graph_files) > 1:
             movie_output_path = self.get_movie_file_path()
-            (new_movie_output_fd, new_movie_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.gif')
+            (new_movie_output_fd, new_movie_output_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs', suffix='.gif')
             os.close(new_movie_output_fd)
-            (resized_frame_fd, resized_frame_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs', suffix='.resized-frame.jpg')
+            (resized_frame_fd, resized_frame_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs', suffix='.resized-frame.jpg')
             os.close(resized_frame_fd)
 
             (ts, new_frame) = graph_files[-1]
@@ -145,7 +145,7 @@ class HourglassGrapher(Grapher):
 
     def create_graph_input(self, cloud_info, job_classads):
         input_file_path = None
-        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
+        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs')
 
         input_file = os.fdopen(input_fd, 'w+b')
         input_file.write('graph G {\n')
@@ -204,7 +204,7 @@ class CompactRadialGrapher(Grapher):
 
     def create_graph_input(self, cloud_info, job_classads):
         input_file_path = None
-        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
+        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs')
 
         input_file = os.fdopen(input_fd, 'w+b')
         input_file.write('digraph G {\n')
@@ -271,7 +271,7 @@ class RadialGrapher(Grapher):
 
     def create_graph_input(self, cloud_info, job_classads):
         input_file_path = None
-        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
+        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs')
 
         input_file = os.fdopen(input_fd, 'w+b')
         input_file.write('digraph G {\n')
@@ -329,7 +329,7 @@ class NeatoGrapher(Grapher):
 
     def create_graph_input(self, cloud_info, job_classads):
         input_file_path = None
-        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/graphs')
+        (input_fd, input_file_path) = tempfile.mkstemp(dir='/srv/www/htdocs/vhosts/science.cloud.nrc.ca/graphs')
 
         input_file = os.fdopen(input_fd, 'w+b')
         input_file.write('graph G {\n')

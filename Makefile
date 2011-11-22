@@ -1,3 +1,3 @@
 install:
-	ssh root@babar.cloud.nrc.ca "rm /srv/www/htdocs/vhosts/babar.cloud.nrc.ca/webui/*" ; scp ./*.py root@babar.cloud.nrc.ca:/srv/www/htdocs/vhosts/babar.cloud.nrc.ca/webui/ ; ssh root@babar.cloud.nrc.ca "/etc/init.d/apache2 reload"
+	ssh root@science.cloud.nrc.ca "rm /srv/www/htdocs/vhosts/science.cloud.nrc.ca/webui/*" ; scp ./*.py root@science.cloud.nrc.ca:/srv/www/htdocs/vhosts/science.cloud.nrc.ca/webui/ ; ssh root@science.cloud.nrc.ca "/etc/init.d/apache2 reload"
 
